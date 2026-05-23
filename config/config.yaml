@@ -1,0 +1,9 @@
+API:
+  page: 1
+  country: gb
+  results_per_page: 50
+
+LOGGING:
+  log_file : "log/job_log"
+  level : INFO
+  formatter: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
