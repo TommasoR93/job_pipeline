@@ -7,8 +7,27 @@
 #Python cache
 __pycache__/
 
-#data
-data/
 
 #UV
 .python-version
+
+#GCP Keys
+Keys
+
+#pytest
+.pytest_cache
+
+#airflow
+airflow/logs
+airflow/plugins
+airflow/src
+
+#src
+src/transform.py
+
+#terraform
+terraform/.terraform.lock.hcl
+terraform/.terraform
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform.tfvars

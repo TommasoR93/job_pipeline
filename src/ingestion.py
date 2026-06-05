@@ -4,12 +4,11 @@ from requests.adapters import HTTPAdapter
 import requests
 import os
 import time
-import json
 from urllib3 import Retry
-from pathlib import Path
 from utils.logging import create_logger
-
-
+import io
+from google.cloud import storage
+import pandas as pd
 
 load_dotenv()
 logger = create_logger()
@@ -20,6 +19,7 @@ params = {
     "app_id" : os.getenv("app_id", ""),
     "app_key" : os.getenv("app_key", "")
 }
+bucket_name = os.getenv("bucket_name", "")
 
 def create_session():
     retry_strategy = Retry(
@@ -56,26 +56,31 @@ def pagination(session):
         if response.status_code != 200:
             logger.info(f"Error {response.status_code}")
         data = response.json()
-        result = data.get("results", [])
         logger.info(f"Fetching {page}")
-        if page > 10:
+        if page > 100:
             break
-        save_json(result, page)
         page += 1
-    
-def save_json(all_results, page):
-    path = Path(__file__).resolve().parents[1] / "data"
-    path.mkdir(parents=True, exist_ok=True)
-    file_path = path / f"page_{page}.json"
+    return data
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=2)
+def upload_to_gcs(bucket_name, object_name, buffer):
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(object_name)
+    buffer.seek(0)
+    blob.upload_from_file(buffer, content_type="application/vnd.apache.parquet")
+    print(f"Uploaded to GCS {bucket} the object {blob}")
 
-def main():
+def run_ingestion(data, bucket_name, object_name):
+    buffer = io.BytesIO()
+    df = pd.DataFrame(data.get("results", []))
+    df.to_parquet(buffer, index=False)
+    upload_to_gcs(bucket_name, object_name, buffer)
+
+def main(date_path, run_id):
     session = create_session()
-    logger.info(f"{session} created")
-    pagination(session)
-    logger.info("Pagination and saving completed")
+    data = pagination(session)
+    object_name = f"landing/adzuna_api/{date_path}/{run_id}"
+    run_ingestion(data, bucket_name, object_name)
 
-if __name__== "__main__":
+if __name__ == "__main__":
     main()
